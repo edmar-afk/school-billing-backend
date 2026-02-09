@@ -219,4 +219,4 @@ class PaidBillingListView(ListAPIView):
     serializer_class = BillingActivitySerializer
 
     def get_queryset(self):
-        return Billing.objects.filter(payment_status='Paid').select_related('student')
+        return Billing.objects.filter(payment_status='Paid').select_related('student').first()
