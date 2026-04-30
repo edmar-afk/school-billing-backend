@@ -10,7 +10,7 @@ from django.conf import settings
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Students
-        fields = ["id", "full_name", "email", "grade"]
+        fields = ["id", "full_name", "email", "grade", "status"]
         
 
 
@@ -37,6 +37,7 @@ class BillingSerializer(serializers.ModelSerializer):
             "date_billed",
             "payment_method",
             "date_paid",
+            "status",
         ]
 
 

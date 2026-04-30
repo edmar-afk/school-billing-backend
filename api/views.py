@@ -227,3 +227,41 @@ class BillingDetailView(generics.RetrieveUpdateAPIView):
     queryset = Billing.objects.all()
     serializer_class = BillingSerializer
     lookup_field = "id"
+    
+    
+class UpdateStudentStatusView(APIView):
+    permission_classes = [AllowAny]
+    def patch(self, request, pk):
+        try:
+            student = Students.objects.get(pk=pk)
+        except Students.DoesNotExist:
+            return Response({"error": "Student not found"}, status=404)
+
+        new_status = request.data.get("status")
+
+        if not new_status:
+            return Response({"error": "Status is required"}, status=400)
+
+        student.status = new_status
+        student.save()
+
+        return Response({"status": student.status})
+    
+    
+class UpdateBillingStatusView(APIView):
+    permission_classes = [AllowAny]
+    def patch(self, request, pk):
+        try:
+            billing = Billing.objects.get(pk=pk)
+        except Billing.DoesNotExist:
+            return Response({"error": "Billing not found"}, status=404)
+
+        new_status = request.data.get("status")
+
+        if not new_status:
+            return Response({"error": "Status is required"}, status=400)
+
+        billing.status = new_status
+        billing.save()
+
+        return Response({"status": billing.status})

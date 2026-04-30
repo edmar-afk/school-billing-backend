@@ -7,7 +7,7 @@ class Students(models.Model):
     full_name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     grade = models.CharField(max_length=10)
-    
+    status = models.TextField(default='Pending')
     
 
 
@@ -22,6 +22,7 @@ class Billing(models.Model):
     date_billed = models.DateField(auto_now_add=True)
     payment_method = models.CharField(max_length=50)
     date_paid = models.DateTimeField(null=True, blank=True)
+    status = models.TextField(default='Pending')
 
     def save(self, *args, **kwargs):
         tuition = float(self.tuition_fee or 0)

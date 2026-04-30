@@ -30,4 +30,7 @@ urlpatterns = [
    path('billings/paid/', views.PaidBillingListView.as_view()),
    
    path("billing/<int:id>/", views.BillingDetailView.as_view(), name="billing-detail"),
+   
+   path('students/<int:pk>/update-status/', views.UpdateStudentStatusView.as_view()),
+   path('billings/<int:pk>/update-status/', views.UpdateBillingStatusView.as_view()),
 ]
