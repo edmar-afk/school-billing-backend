@@ -28,4 +28,6 @@ urlpatterns = [
    path('billing/export-excel/', views.BillingExcelExportView.as_view()),
    
    path('billings/paid/', views.PaidBillingListView.as_view()),
+   
+   path("billing/<int:id>/", views.BillingDetailView.as_view(), name="billing-detail"),
 ]

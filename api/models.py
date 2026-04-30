@@ -14,20 +14,32 @@ class Students(models.Model):
 class Billing(models.Model):
     student = models.ForeignKey(Students, on_delete=models.CASCADE)
     payment_status = models.TextField(default='Pending')
-    tuition_fee = models.TextField()
-    miscellaneous_fee = models.TextField()
-    penalties = models.TextField()
-    discounts = models.TextField()
-    total_amount = models.TextField()
+    tuition_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    miscellaneous_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    penalties = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    discounts = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     date_billed = models.DateField(auto_now_add=True)
     payment_method = models.CharField(max_length=50)
     date_paid = models.DateTimeField(null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        tuition = float(self.tuition_fee or 0)
+        misc = float(self.miscellaneous_fee or 0)
+        penalties = float(self.penalties or 0)
+        discounts = float(self.discounts or 0)
+
+        total = tuition + misc + penalties - discounts
+
+        self.total_amount = str(max(total, 0))
+
+        super().save(*args, **kwargs)
     
 
 class Reports(models.Model):
     student = models.ForeignKey(Students, on_delete=models.CASCADE) 
     total_collection = models.TextField()
-    exported_file = models.FileField(upload_to='reports/', validators=[FileExtensionValidator(allowed_extensions=['pdf', 'docx'])])
+    exported_file = models.FileField(upload_to='reports/', validators=[FileExtensionValidator(allowed_extensions=['pdf', 'docx', 'xlsx'])])
     
 
 class MailSent(models.Model):
