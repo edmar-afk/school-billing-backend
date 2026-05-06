@@ -167,7 +167,8 @@ EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
-EMAIL_HOST_USER = "jaywrsnp6@gmail.com"
-EMAIL_HOST_PASSWORD = "ntwzgedtcpkqukxd"
+EMAIL_HOST_USER = "jaywrsnp5@gmail.com"
+EMAIL_HOST_PASSWORD = "qgqaqvqlmszygfrz"
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+

@@ -2,17 +2,40 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db import models
-from .models import Students, Billing, MailSent
+from .models import Students, Billing, MailSent, Treasurers
 from django.core.mail import send_mail
 from django.conf import settings
 
-
+class TreasurerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Treasurers
+        fields = "__all__"
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Students
         fields = ["id", "full_name", "email", "grade", "status"]
-        
 
+    def validate_full_name(self, value):
+        queryset = Students.objects.filter(full_name__iexact=value)
+
+        if self.instance:
+            queryset = queryset.exclude(id=self.instance.id)
+
+        if queryset.exists():
+            raise serializers.ValidationError("Student full name already exists.")
+
+        return value
+
+    def validate_email(self, value):
+        queryset = Students.objects.filter(email__iexact=value)
+
+        if self.instance:
+            queryset = queryset.exclude(id=self.instance.id)
+
+        if queryset.exists():
+            raise serializers.ValidationError("Email already exists.")
+
+        return value
 
 class BillingSerializer(serializers.ModelSerializer):
     student = StudentSerializer(read_only=True)

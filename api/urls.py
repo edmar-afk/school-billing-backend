@@ -33,4 +33,15 @@ urlpatterns = [
    
    path('students/<int:pk>/update-status/', views.UpdateStudentStatusView.as_view()),
    path('billings/<int:pk>/update-status/', views.UpdateBillingStatusView.as_view()),
+   
+   path("cron/send-billing-reminders/", views.SendBillingRemindersView.as_view()),
+   path("notify/<str:grade>/", views.NotifyStudentsByGradeView.as_view(), name="notify-students-by-grade"),
+   
+   
+    path("treasurers/create/", views.TreasurerCreateView.as_view()),
+    path("treasurers/", views.TreasurerListView.as_view()),
+    path("treasurers/<int:pk>/edit/", views.TreasurerUpdateView.as_view()),
+    path("treasurers/<int:pk>/delete/", views.TreasurerDeleteView.as_view()),
+    
+    
 ]
