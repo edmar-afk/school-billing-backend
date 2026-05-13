@@ -1,6 +1,6 @@
 from rest_framework.generics import CreateAPIView
 from rest_framework.permissions import AllowAny
-from .serializers import StudentSerializer, BillingSerializer, BillingCreateSerializer, BillingActivitySerializer, TreasurerSerializer
+from .serializers import StudentSerializer, BillingSerializer, BillingPDFSerializer, BillingActivitySerializer, TreasurerSerializer 
 from .models import Students, Billing, MailSent, Treasurers
 from rest_framework import generics
 from rest_framework.generics import RetrieveUpdateAPIView, UpdateAPIView, DestroyAPIView
@@ -11,7 +11,6 @@ from django.core.mail import send_mail
 from django.conf import settings
 from decimal import Decimal, InvalidOperation
 from django.db.models import Sum
-from .serializers import BillingExcelSerializer
 from openpyxl import Workbook # type: ignore
 from django.http import HttpResponse
 from rest_framework.generics import ListAPIView
@@ -21,33 +20,153 @@ from django.http import JsonResponse
 from django.views import View
 from django.utils import timezone
 from datetime import timedelta
+from django.core.mail import BadHeaderError
 
-class BillingExcelExportView(APIView):
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from io import BytesIO
+from reportlab.lib.enums import TA_CENTER
+
+class BillingPDFExportView(APIView):
     permission_classes = [AllowAny]
-    
-    def get(self, request):
-        billings = Billing.objects.select_related('student')
-        serializer = BillingExcelSerializer(billings, many=True)
 
-        wb = Workbook()
-        ws = wb.active
-        ws.title = 'Billing Report'
+    def get(self, request):
+        username = request.query_params.get("username")
+
+        submitted_by = "Unknown Treasurer"
+
+        if username:
+            try:
+                treasurer = Treasurers.objects.get(username=username)
+                submitted_by = treasurer.full_name
+            except Treasurers.DoesNotExist:
+                submitted_by = "Unknown Treasurer"
+
+        billings = Billing.objects.select_related("student")
+        serializer = BillingPDFSerializer(billings, many=True)
+
+        buffer = BytesIO()
+        page_width, page_height = landscape(letter)
+
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(letter),
+            leftMargin=20,
+            rightMargin=20,
+            topMargin=20,
+            bottomMargin=20
+        )
+
+        styles = getSampleStyleSheet()
+        title_style = styles["Title"]
+        title_style.alignment = TA_CENTER
+
+        subtitle_style = styles["Normal"]
+        title_style.fontSize = 14
+        title_style.spaceAfter = 6
+        subtitle_style.alignment = TA_CENTER
+
+        style = styles["BodyText"]
+        subtitle_style.fontSize = 10
+        subtitle_style.spaceAfter = 12
+
+        field_labels = {
+            "student_name": "Student Name",
+            "payment_status": "Payment Status",
+            "tuition_fee": "Tuition Fee",
+            "miscellaneous_fee": "Miscellaneous Fee",
+            "penalties": "Penalties",
+            "total_amount": "Total Amount",
+            "date_billed": "Date Billed",
+            "date_paid": "Date Paid",
+            "status": "Status",
+            "email_sent": "Email Sent",
+        }
+
+        def format_value(key, value):
+            if value is None:
+                return ""
+
+            if key == "email_sent":
+                return "Yes" if value else "No"
+
+            if key in ["tuition_fee", "miscellaneous_fee", "penalties", "total_amount"]:
+                try:
+                    return f"₱{float(value):,.2f}"
+                except:
+                    return value
+
+            if "date" in key and value:
+                try:
+                    return value.strftime("%B %d, %Y")
+                except:
+                    return value
+
+            return str(value)
+
+        elements = []
+
+        elements.append(Paragraph(
+            "Precious Gems Elementary School Web-Based Billing System",
+            title_style
+        ))
+        elements.append(Paragraph(
+            "Zamboanga del Sur Vincenzo Sagun",
+            subtitle_style
+        ))
+        elements.append(Spacer(1, 12))
+
+        data = []
 
         if serializer.data:
-            raw_headers = serializer.data[0].keys()
-            headers = [h.replace('_', ' ').title() for h in raw_headers]
-            ws.append(headers)
+            raw_keys = list(serializer.data[0].keys())
+
+            headers = [
+                field_labels.get(k, k.replace("_", " ").title())
+                for k in raw_keys
+            ]
+            data.append(headers)
 
             for row in serializer.data:
-                ws.append(list(row.values()))
+                formatted_row = []
+                for k, value in row.items():
+                    formatted_row.append(Paragraph(format_value(k, value), style))
+                data.append(formatted_row)
 
-        response = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = 'attachment; filename=billing_report.xlsx'
+        usable_width = page_width - 40
+        col_width = usable_width / len(data[0])
+        col_widths = [col_width] * len(data[0])
 
-        wb.save(response)
+        table = Table(data, colWidths=col_widths, repeatRows=1)
+
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.green),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 7),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+            ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
+        ]))
+
+        elements.append(table)
+        elements.append(Spacer(1, 20))
+
+        elements.append(Paragraph(f"Submitted by: {submitted_by}", subtitle_style))
+
+        doc.build(elements)
+
+        pdf = buffer.getvalue()
+        buffer.close()
+
+        response = HttpResponse(content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="billing_report.pdf"'
+        response.write(pdf)
         return response
+    
 class SendBillingEmailView(APIView):
     permission_classes = [AllowAny]
 
@@ -74,18 +193,18 @@ class SendBillingEmailView(APIView):
         discounts = to_decimal(billing.discounts)
 
         total_amount = tuition_fee + miscellaneous_fee + penalties - discounts
-        billing.total_amount = str(total_amount)
+
+        billing.total_amount = total_amount
         billing.save(update_fields=["total_amount"])
 
-        # Message to send to student (exclude date_paid)
-        subject = "Billing Statement"
+        subject = "Billing Statement Reminder from Precious Gems Elementary School"
+
         message = (
             f"Hello {student.full_name},\n\n"
             f"Here is your billing summary:\n\n"
             f"Tuition Fee: {tuition_fee}\n"
             f"Miscellaneous Fee: {miscellaneous_fee}\n"
             f"Penalties: {penalties}\n"
-            f"Discounts: {discounts}\n"
             f"--------------------------\n"
             f"TOTAL AMOUNT: {total_amount}\n\n"
             f"Date Billed: {billing.date_billed}\n"
@@ -102,15 +221,12 @@ class SendBillingEmailView(APIView):
             fail_silently=False,
         )
 
-        # Description for MailSent (include date_paid)
-        description_for_record = (
-            f"{message}\n\n"
-            f"Date Paid: {billing.date_paid}"
-        )
+        billing.email_sent = True
+        billing.save(update_fields=["email_sent"])
 
         MailSent.objects.create(
             student_name=student.full_name,
-            description=description_for_record
+            description=f"{message}\n\nDate Paid: {billing.date_paid}"
         )
 
         return Response(
@@ -118,6 +234,7 @@ class SendBillingEmailView(APIView):
                 "detail": "Billing email sent successfully",
                 "billing_id": billing.id,
                 "total_amount": str(total_amount),
+                "email_sent": billing.email_sent
             },
             status=status.HTTP_200_OK
         )

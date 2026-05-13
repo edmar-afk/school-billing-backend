@@ -61,6 +61,7 @@ class BillingSerializer(serializers.ModelSerializer):
             "payment_method",
             "date_paid",
             "status",
+            "email_sent",
         ]
 
 
@@ -89,7 +90,7 @@ class MailSentSerializer(serializers.ModelSerializer):
 
 
 
-class BillingExcelSerializer(serializers.ModelSerializer):
+class BillingPDFSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.full_name')
     grade = serializers.CharField(source='student.grade')
     date_billed = serializers.SerializerMethodField()
@@ -104,11 +105,12 @@ class BillingExcelSerializer(serializers.ModelSerializer):
             'tuition_fee',
             'miscellaneous_fee',
             'penalties',
-            'discounts',
+           
             'total_amount',
-            'payment_method',
+            
             'date_billed',
             'date_paid',
+           
         ]
 
     def get_date_billed(self, obj):
@@ -131,4 +133,5 @@ class BillingActivitySerializer(serializers.ModelSerializer):
             'total_amount',
             'date_billed',
             'date_paid',
+            "email_sent",
         ]

@@ -25,7 +25,7 @@ urlpatterns = [
    path("billing/total-paid/", views.TotalPaidAmountView.as_view()),
    
    path('mail/count/', views.MailSentCountView.as_view(), name='mail-sent-count'),
-   path('billing/export-excel/', views.BillingExcelExportView.as_view()),
+   path('billing/export-pdf/', views.BillingPDFExportView.as_view()),
    
    path('billings/paid/', views.PaidBillingListView.as_view()),
    
